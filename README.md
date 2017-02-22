@@ -23,16 +23,12 @@ check, err := health.InitialiseServiceCheck("name", 5 * time.Second)
 ```go
 // Register a hard dependency
 check.RegisterDependency("google", health.LevelHard, func() bool {
-	resp, err :=http.Get("http://google.com")
+	resp, err := http.Get("http://google.com")
 	if err != nil {
 		return false
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-
-	return true
+	return resp.StatusCode == http.StatusOK
 })
 ```
 
