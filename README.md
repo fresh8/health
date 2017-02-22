@@ -12,7 +12,7 @@ go get -u github.com/fresh8/health
 
 `health.LevelHard` references a hard dependency. This describes a dependency in which the service requires, and will become unhealthy if one of its hard dependencies is down.
 
-`health.Levelsoft` references a soft dependency. This describes a dependency in which the service can run without, remaining healthy.
+`health.LevelSoft` references a soft dependency. This describes a dependency in which the service can run without, remaining healthy.
 
 #### Initialise your healthcheck:
 ```go
