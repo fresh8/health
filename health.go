@@ -14,24 +14,28 @@ var (
 	mu sync.Mutex
 )
 
+// Level is used to outline an acceptable level of dependency failure
 type Level uint32
 
-// Levels
 const (
+	// LevelSoft defines a soft dependency, one that the service can continue
+	// functionality if it's down
 	LevelSoft Level = 0
+	// LevelHard defines a hard dependency, one that's crucial to the service
 	LevelHard Level = 1
 )
 
 var (
-	// HTTPClient is used to make requests, it comes with predefine
+	// HTTPClient is used to make requests, it comes with sensible, pre-defined
+	// timeouts.
 	HTTPClient = &http.Client{
 		Timeout:   500 * time.Millisecond,
 		Transport: http.DefaultTransport,
 	}
 )
 
-// ServiceCheck is the main struct in the package.
-// Use InitialiseHealthCheck to create one
+// ServiceCheck is the main struct in the package. Use InitialiseHealthCheck to
+// instantiate one
 type ServiceCheck struct {
 	Name         string        `json:"name"`
 	Healthy      bool          `json:"healthy"`
@@ -40,6 +44,7 @@ type ServiceCheck struct {
 	duration time.Duration
 }
 
+// Dependency defines a dependency and it's status
 type Dependency struct {
 	Name    string `json:"name"`
 	Healthy bool   `json:"healthy"`
