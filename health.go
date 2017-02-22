@@ -72,9 +72,8 @@ func Check200Helper(rawURL string) (bool, error) {
 	return true, nil
 }
 
-// InitialiseServiceCheck returns an initialised Check. The service name must
-// not be empty.
-// The ServiceCheck status is assumed to be healthy initially
+// InitialiseServiceCheck returns an initialised check for the service `name`.
+// It's dependencies will be polled every `duration`.
 func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck, error) {
 	if name == "" {
 		return nil, ErrNoServiceNameSupplied
