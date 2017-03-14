@@ -1,6 +1,7 @@
 package health
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -93,6 +94,25 @@ func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck,
 	check.startCheck()
 
 	return check, nil
+}
+
+// WaitForDependencies blocks current thread until all dependencies are healthy
+// if it takes longer than `timeout` to ensure that all dependencies are
+// healthy it will return false
+func (s *ServiceCheck) WaitForDependencies(timeout time.Duration) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	go func() {
+		for {
+			s.updateStatus()
+			if s.Healthy {
+				cancel()
+				break
+			}
+			<-time.After(1 * time.Second)
+		}
+	}()
+	<-ctx.Done()
+	return s.Healthy
 }
 
 func (s *ServiceCheck) startCheck() {

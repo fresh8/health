@@ -198,3 +198,55 @@ func TestGet(t *testing.T) {
 		}
 	}
 }
+
+func TestWaitForDependencies(t *testing.T) {
+	t.Run("healthy", func(t *testing.T) {
+		healthCheck := &ServiceCheck{
+			Name:     "test",
+			Healthy:  true,
+			duration: 0,
+		}
+
+		returned := make(chan struct{})
+
+		healthCheck.RegisterDependency("redis", LevelHard, func() bool {
+			return true
+		})
+
+		go func() {
+			healthCheck.WaitForDependencies(10 * time.Second)
+			returned <- struct{}{}
+		}()
+		select {
+		case <-returned:
+			break
+		case <-time.After(time.Second * 2):
+			t.Error("Timeout even though the health check passes")
+		}
+	})
+
+	t.Run("unhealthy", func(t *testing.T) {
+		healthCheck := &ServiceCheck{
+			Name:     "test",
+			Healthy:  true,
+			duration: 0,
+		}
+
+		returned := make(chan struct{})
+
+		healthCheck.RegisterDependency("redis", LevelHard, func() bool {
+			return false
+		})
+
+		go func() {
+			healthCheck.WaitForDependencies(2 * time.Second)
+			returned <- struct{}{}
+		}()
+		select {
+		case <-returned:
+			break
+		case <-time.After(time.Second * 3):
+			t.Error("Context wasn't cancelled")
+		}
+	})
+}

@@ -2,6 +2,10 @@
 ---
 A package to help your service check the health of others. (For when your load balancers can't.)
 
+## Requirements
+
+Due to the use of the `context` package, `health` is only compatible with go 1.7+
+
 ## Installation
 Health is vendorable, use your favourite tools to vendor the package via the import path `github.com/fresh8/health`, example:
 ```bash
