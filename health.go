@@ -35,8 +35,7 @@ var (
 	}
 )
 
-// ServiceCheck is the main struct in the package. Use 
-seHealthCheck to
+// ServiceCheck is the main struct in the package. Use InitialiseHealthCheck to
 // instantiate one
 type ServiceCheck struct {
 	Name         string        `json:"name"`
