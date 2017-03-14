@@ -34,7 +34,8 @@ var (
 	}
 )
 
-// ServiceCheck is the main struct in the package. Use InitialiseHealthCheck to
+// ServiceCheck is the main struct in the package. Use 
+seHealthCheck to
 // instantiate one
 type ServiceCheck struct {
 	Name         string        `json:"name"`
@@ -87,8 +88,6 @@ func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck,
 	check := &ServiceCheck{
 		Name:     name,
 		duration: duration,
-
-		Healthy: true,
 	}
 
 	check.startCheck()
