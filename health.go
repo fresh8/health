@@ -134,8 +134,6 @@ func (s *ServiceCheck) startCheck() {
 // dependency isn't a duplicate, performs an initial health check, and adds it
 // to be continually checked.
 func (s *ServiceCheck) RegisterDependency(name string, level Level, check func() bool) error {
-	mutex.Lock()
-	defer mutex.Unlock()
 	if name == "" {
 		return ErrNoDependency
 	}
@@ -154,14 +152,16 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 		check: check,
 	}
 
+	mutex.Lock()
 	s.Dependencies = append(s.Dependencies, dep)
+	mutex.Unlock()
 	return nil
 }
 
 // Dependency finds and returns the named dependency
 func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	mutex.RLock()
+	defer mutex.RUnlock()
 	for _, dependency := range s.Dependencies {
 		if dependency.Name == name {
 			return dependency, nil
