@@ -75,6 +75,16 @@ func TestRegisterDependency(t *testing.T) {
 	}
 }
 
+func TestInitialiseServiceCheck(t *testing.T) {
+	check, err := InitialiseServiceCheck("", 50*time.Millisecond)
+	if err == nil {
+		t.Errorf("expecting %v got %v", ErrNoServiceNameSupplied, err)
+	}
+	if check != nil {
+		t.Errorf("expected nil got %v", check)
+	}
+}
+
 func TestDependency(t *testing.T) {
 	tests := []struct {
 		dependency  *Dependency
