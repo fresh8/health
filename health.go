@@ -160,6 +160,8 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 
 // Dependency finds and returns the named dependency
 func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
 	for _, dependency := range s.Dependencies {
 		if dependency.Name == name {
 			return dependency, nil
