@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	mu sync.Mutex
+	mutex sync.RWMutex
 )
 
 // Level is used to outline an acceptable level of dependency failure
@@ -103,7 +103,7 @@ func (s *ServiceCheck) WaitForDependencies(timeout time.Duration) bool {
 	go func() {
 		for {
 			s.updateStatus()
-			if s.Healthy {
+			if s.getHealth() {
 				cancel()
 				break
 			}
@@ -111,6 +111,13 @@ func (s *ServiceCheck) WaitForDependencies(timeout time.Duration) bool {
 		}
 	}()
 	<-ctx.Done()
+	return s.getHealth()
+}
+
+// getHealth is a helper function to make sure a mutex is taken when reading this value
+func (s *ServiceCheck) getHealth() bool {
+	mutex.RLock()
+	defer mutex.RUnlock()
 	return s.Healthy
 }
 
@@ -127,6 +134,8 @@ func (s *ServiceCheck) startCheck() {
 // dependency isn't a duplicate, performs an initial health check, and adds it
 // to be continually checked.
 func (s *ServiceCheck) RegisterDependency(name string, level Level, check func() bool) error {
+	mutex.Lock()
+	defer mutex.Unlock()
 	if name == "" {
 		return ErrNoDependency
 	}
@@ -151,6 +160,8 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 
 // Dependency finds and returns the named dependency
 func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
 	for _, dependency := range s.Dependencies {
 		if dependency.Name == name {
 			return dependency, nil
@@ -161,6 +172,8 @@ func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
 }
 
 func (s *ServiceCheck) updateStatus() {
+	mutex.Lock()
+	defer mutex.Unlock()
 	// loop through and change to unhealthy if any dependents are unhealthy
 	for _, dependency := range s.Dependencies {
 		dependency.Healthy = dependency.check()
@@ -192,7 +205,7 @@ func (s *ServiceCheck) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 // IsHealthy returns a bool whether this ServiceCheck is healthy
 func (s *ServiceCheck) IsHealthy() bool {
-	return s.Healthy
+	return s.getHealth()
 }
 
 // Get is a wrapper which checks whether the URL is healthy
@@ -220,7 +233,7 @@ func Get(url string) (bool, error) {
 		return false, err
 	}
 
-	return response.Healthy, nil
+	return response.getHealth(), nil
 }
 
 // Errors
