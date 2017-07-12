@@ -194,7 +194,7 @@ func (s *ServiceCheck) WriteStatus(w io.Writer) error {
 
 // HTTPHandler outputs the status with the relevant response code to a ResponseWriter
 func (s *ServiceCheck) HTTPHandler(w http.ResponseWriter, r *http.Request) {
-	if s.Healthy {
+	if s.getHealth() {
 		w.WriteHeader(200)
 	} else {
 		w.WriteHeader(503)
