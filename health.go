@@ -79,7 +79,7 @@ func Check200Helper(rawURL string) (bool, error) {
 // It's dependencies will be polled every `duration`.
 //
 // Since v2.0.0 the user is required to start the check themselves by calling
-// StartCheck once all dependancies are registered
+// StartCheck once all dependencies are registered
 func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck, error) {
 	if name == "" {
 		return nil, ErrNoServiceNameSupplied
