@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-var (
-	mutex sync.RWMutex
-)
-
 // Level is used to outline an acceptable level of dependency failure
 type Level uint32
 
@@ -43,6 +39,7 @@ type ServiceCheck struct {
 	Dependencies []*Dependency `json:"dependencies"`
 
 	duration time.Duration
+	mu       sync.RWMutex
 }
 
 // Dependency defines a dependency and it's status
@@ -80,6 +77,9 @@ func Check200Helper(rawURL string) (bool, error) {
 
 // InitialiseServiceCheck returns an initialised check for the service `name`.
 // It's dependencies will be polled every `duration`.
+//
+// Since v2.0.0 the user is required to start the check themselves by calling
+// StartCheck once all dependencies are registered
 func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck, error) {
 	if name == "" {
 		return nil, ErrNoServiceNameSupplied
@@ -89,8 +89,6 @@ func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck,
 		Name:     name,
 		duration: duration,
 	}
-
-	check.startCheck()
 
 	return check, nil
 }
@@ -114,14 +112,8 @@ func (s *ServiceCheck) WaitForDependencies(timeout time.Duration) bool {
 	return s.getHealth()
 }
 
-// getHealth is a helper function to make sure a mutex is taken when reading this value
-func (s *ServiceCheck) getHealth() bool {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	return s.Healthy
-}
-
-func (s *ServiceCheck) startCheck() {
+// StartCheck will start checking the dependencies
+func (s *ServiceCheck) StartCheck() {
 	go func() {
 		for {
 			s.updateStatus()
@@ -152,16 +144,16 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 		check: check,
 	}
 
-	mutex.Lock()
+	s.mu.Lock()
 	s.Dependencies = append(s.Dependencies, dep)
-	mutex.Unlock()
+	s.mu.Unlock()
 	return nil
 }
 
 // Dependency finds and returns the named dependency
 func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
-	mutex.RLock()
-	defer mutex.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, dependency := range s.Dependencies {
 		if dependency.Name == name {
 			return dependency, nil
@@ -171,9 +163,15 @@ func (s *ServiceCheck) Dependency(name string) (*Dependency, error) {
 	return nil, ErrNoDependency
 }
 
+func (s *ServiceCheck) getHealth() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.Healthy
+}
+
 func (s *ServiceCheck) updateStatus() {
-	mutex.Lock()
-	defer mutex.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// loop through and change to unhealthy if any dependents are unhealthy
 	for _, dependency := range s.Dependencies {
 		dependency.Healthy = dependency.check()
@@ -233,7 +231,7 @@ func Get(url string) (bool, error) {
 		return false, err
 	}
 
-	return response.getHealth(), nil
+	return response.Healthy, nil
 }
 
 // Errors

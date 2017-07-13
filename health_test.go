@@ -260,3 +260,16 @@ func TestWaitForDependencies(t *testing.T) {
 		}
 	})
 }
+
+func TestGetHealth(t *testing.T) {
+	healthCheck := &ServiceCheck{
+		Name:     "test",
+		Healthy:  true,
+		duration: 0,
+	}
+
+	healthy := healthCheck.Healthy
+	if !healthy {
+		t.Error("expected to be healthy")
+	}
+}

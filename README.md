@@ -36,6 +36,11 @@ check.RegisterDependency("google", health.LevelHard, func() bool {
 })
 ```
 
+#### Start the check
+```go
+check.StartCheck()
+```
+
 #### Serve the healthchecks
 ```go
 router.Handle("/health", health.HTTPHandler)
