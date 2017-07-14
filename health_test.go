@@ -124,6 +124,13 @@ func TestDependency(t *testing.T) {
 }
 
 func TestEndpointHelper(t *testing.T) {
+	var (
+		testHTTPClient = &http.Client{
+			Timeout:   1 * time.Second,
+			Transport: http.DefaultTransport,
+		}
+	)
+
 	tests := []struct {
 		status      int
 		expected    bool
@@ -147,6 +154,13 @@ func TestEndpointHelper(t *testing.T) {
 			t.Errorf("expected %v got %v", test.expected, resp)
 		}
 
+		resp, err = Check200Helper(server.URL, testHTTPClient)
+		if err != test.expectedErr {
+			t.Errorf("expected %v got %v", test.expectedErr, err)
+		}
+		if resp != test.expected {
+			t.Errorf("expected %v got %v", test.expected, resp)
+		}
 	}
 }
 
@@ -182,6 +196,12 @@ func TestHTTPHandler(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
+	var (
+		testHTTPClient = &http.Client{
+			Timeout:   1 * time.Second,
+			Transport: http.DefaultTransport,
+		}
+	)
 	tests := []struct {
 		healthy  bool
 		expected bool
@@ -199,6 +219,15 @@ func TestGet(t *testing.T) {
 		}))
 
 		healthy, err := Get(server.URL)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+
+		if healthy != test.expected {
+			t.Errorf("expected %v, got %v", test.expected, healthy)
+		}
+
+		healthy, err = Get(server.URL, testHTTPClient)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
