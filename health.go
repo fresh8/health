@@ -23,7 +23,9 @@ const (
 )
 
 var (
-	defaultHTTPClient = &http.Client{
+	// HTTPClient is used to make requests, it comes with sensible, pre-defined
+	// timeouts.
+	HTTPClient = &http.Client{
 		Timeout:   500 * time.Millisecond,
 		Transport: http.DefaultTransport,
 	}
@@ -47,6 +49,34 @@ type Dependency struct {
 	Level   Level  `json:"level"`
 
 	check func() bool
+}
+
+// Check200Helper is a helper for checking a service's health endpoint.
+// Function supports passing an optional *http.Client to use a different
+// timeout for the health check.
+func Check200Helper(rawURL string, clients ...*http.Client) (bool, error) {
+	client := getHTTPClient(clients)
+
+	u, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return false, err
+	}
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // InitialiseServiceCheck returns an initialised check for the service `name`.
@@ -114,7 +144,8 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 		Name:    name,
 		Level:   level,
 		Healthy: check(),
-		check:   check,
+
+		check: check,
 	}
 
 	s.mu.Lock()
@@ -179,27 +210,12 @@ func (s *ServiceCheck) IsHealthy() bool {
 	return s.getHealth()
 }
 
-// Get is a wrapper which calls getHealthStatus using the default http client.
-func Get(url string) (bool, error) {
-	return getHealthStatus(url, defaultHTTPClient)
-}
-
-// GetCustomHTTPClient is a wrapper which extends the default health status and allows
-// the calling function to specify a client using the default by passing nil or custom client
-func GetCustomHTTPClient(url string, client *http.Client) (bool, error) {
-	return getHealthStatus(url, client)
-}
-
-func getHealthStatus(url string, client *http.Client) (bool, error) {
+// Get is a wrapper which checks whether the URL is healthy
+func Get(url string, clients ...*http.Client) (bool, error) {
 	var (
 		response ServiceCheck
 	)
-
-	// No client is passed use a default http client
-	if client == nil {
-		client = defaultHTTPClient
-	}
-
+	client := getHTTPClient(clients)
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false, err
@@ -222,46 +238,13 @@ func getHealthStatus(url string, client *http.Client) (bool, error) {
 	return response.Healthy, nil
 }
 
-// Check200Helper is a wrapper function for checking a service's health endpoint.
-// It uses the defaultHTTPClient for making the requests
-func Check200Helper(rawURL string) (bool, error) {
-	return checkHTTPStatusCode(rawURL, defaultHTTPClient)
-}
-
-// Check200HelperCustomHTTPClient is a is a wrapper function for checking a service's health endpoint.
-// An optional http client can be passed in this request to use different timeouts
-func Check200HelperCustomHTTPClient(rawURL string, client *http.Client) (bool, error) {
-	return checkHTTPStatusCode(rawURL, client)
-}
-
-// checkHTTPStatusCode is a helper function for checking a service's health endpoint.
-// An optional http client can be passed in this request to use different timeouts.
-func checkHTTPStatusCode(rawURL string, client *http.Client) (bool, error) {
-	u, err := url.ParseRequestURI(rawURL)
-	if err != nil {
-		return false, err
+// getHTTPClient is a helper function to parse the optional argument
+// and either return the passed HTTP client or use the default HTTPClient
+func getHTTPClient(clients []*http.Client) *http.Client {
+	if len(clients) > 0 {
+		return clients[0]
 	}
-
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return false, err
-	}
-
-	// If no client is passed use a default http client
-	if client == nil {
-		client = defaultHTTPClient
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return false, nil
-	}
-
-	return true, nil
+	return HTTPClient
 }
 
 // Errors
