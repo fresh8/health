@@ -54,8 +54,8 @@ type Dependency struct {
 // Check200Helper is a helper for checking a service's health endpoint.
 // Function supports passing an optional *http.Client to use a different
 // timeout for the health check.
-func Check200Helper(rawURL string, clients ...*http.Client) (bool, error) {
-	client := getHTTPClient(clients)
+func Check200Helper(rawURL string, optionalClient ...*http.Client) (bool, error) {
+	client := getHTTPClient(optionalClient)
 
 	u, err := url.ParseRequestURI(rawURL)
 	if err != nil {
@@ -211,11 +211,11 @@ func (s *ServiceCheck) IsHealthy() bool {
 }
 
 // Get is a wrapper which checks whether the URL is healthy
-func Get(url string, clients ...*http.Client) (bool, error) {
+func Get(url string, optionalClient ...*http.Client) (bool, error) {
 	var (
 		response ServiceCheck
 	)
-	client := getHTTPClient(clients)
+	client := getHTTPClient(optionalClient)
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false, err
@@ -240,9 +240,9 @@ func Get(url string, clients ...*http.Client) (bool, error) {
 
 // getHTTPClient is a helper function to parse the optional argument
 // and either return the passed HTTP client or use the default HTTPClient
-func getHTTPClient(clients []*http.Client) *http.Client {
-	if len(clients) > 0 {
-		return clients[0]
+func getHTTPClient(optionalClient []*http.Client) *http.Client {
+	if len(optionalClient) > 0 {
+		return optionalClient[0]
 	}
 	return HTTPClient
 }
