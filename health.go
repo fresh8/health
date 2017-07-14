@@ -35,8 +35,9 @@ type ServiceCheck struct {
 	Name         string        `json:"name"`
 	Healthy      bool          `json:"healthy"`
 	Dependencies []*Dependency `json:"dependencies"`
-	duration     time.Duration
-	mu           sync.RWMutex
+
+	duration time.Duration
+	mu       sync.RWMutex
 }
 
 // Dependency defines a dependency and it's status
