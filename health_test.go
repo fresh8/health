@@ -124,6 +124,13 @@ func TestDependency(t *testing.T) {
 }
 
 func TestEndpointHelper(t *testing.T) {
+	var (
+		testHTTPClient = &http.Client{
+			Timeout:   1 * time.Second,
+			Transport: http.DefaultTransport,
+		}
+	)
+
 	tests := []struct {
 		status      int
 		expected    bool
@@ -147,6 +154,13 @@ func TestEndpointHelper(t *testing.T) {
 			t.Errorf("expected %v got %v", test.expected, resp)
 		}
 
+		resp, err = Check200HelperCustomHTTPClient(server.URL, testHTTPClient)
+		if err != test.expectedErr {
+			t.Errorf("expected %v got %v", test.expectedErr, err)
+		}
+		if resp != test.expected {
+			t.Errorf("expected %v got %v", test.expected, resp)
+		}
 	}
 }
 
@@ -199,6 +213,41 @@ func TestGet(t *testing.T) {
 		}))
 
 		healthy, err := Get(server.URL)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+
+		if healthy != test.expected {
+			t.Errorf("expected %v, got %v", test.expected, healthy)
+		}
+	}
+}
+
+func TestGetCustomHTTPClient(t *testing.T) {
+	var (
+		testHTTPClient = &http.Client{
+			Timeout:   1 * time.Second,
+			Transport: http.DefaultTransport,
+		}
+	)
+
+	tests := []struct {
+		healthy  bool
+		expected bool
+	}{
+		{true, true},
+		{false, false},
+	}
+
+	for _, test := range tests {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(&ServiceCheck{
+				Name:    "test",
+				Healthy: test.healthy,
+			})
+		}))
+
+		healthy, err := GetCustomHTTPClient(server.URL, testHTTPClient)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

@@ -23,9 +23,7 @@ const (
 )
 
 var (
-	// HTTPClient is used to make requests, it comes with sensible, pre-defined
-	// timeouts.
-	HTTPClient = &http.Client{
+	defaultHTTPClient = &http.Client{
 		Timeout:   500 * time.Millisecond,
 		Transport: http.DefaultTransport,
 	}
@@ -37,9 +35,8 @@ type ServiceCheck struct {
 	Name         string        `json:"name"`
 	Healthy      bool          `json:"healthy"`
 	Dependencies []*Dependency `json:"dependencies"`
-
-	duration time.Duration
-	mu       sync.RWMutex
+	duration     time.Duration
+	mu           sync.RWMutex
 }
 
 // Dependency defines a dependency and it's status
@@ -47,32 +44,7 @@ type Dependency struct {
 	Name    string `json:"name"`
 	Healthy bool   `json:"healthy"`
 	Level   Level  `json:"level"`
-
-	check func() bool
-}
-
-// Check200Helper is a helper for checking a service's health endpoint.
-func Check200Helper(rawURL string) (bool, error) {
-	u, err := url.ParseRequestURI(rawURL)
-	if err != nil {
-		return false, err
-	}
-
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return false, err
-	}
-
-	resp, err := HTTPClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return false, nil
-	}
-
-	return true, nil
+	check   func() bool
 }
 
 // InitialiseServiceCheck returns an initialised check for the service `name`.
@@ -80,6 +52,9 @@ func Check200Helper(rawURL string) (bool, error) {
 //
 // Since v2.0.0 the user is required to start the check themselves by calling
 // StartCheck once all dependencies are registered
+//
+// Since v3.0.0 the user is required to specify the time duration of the health checks
+// This is to allow control of how frequently the health checks are made
 func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck, error) {
 	if name == "" {
 		return nil, ErrNoServiceNameSupplied
@@ -140,8 +115,7 @@ func (s *ServiceCheck) RegisterDependency(name string, level Level, check func()
 		Name:    name,
 		Level:   level,
 		Healthy: check(),
-
-		check: check,
+		check:   check,
 	}
 
 	s.mu.Lock()
@@ -206,18 +180,33 @@ func (s *ServiceCheck) IsHealthy() bool {
 	return s.getHealth()
 }
 
-// Get is a wrapper which checks whether the URL is healthy
+// Get is a wrapper which calls getHealthStatus using the default http client.
 func Get(url string) (bool, error) {
+	return getHealthStatus(url, defaultHTTPClient)
+}
+
+// GetCustomHTTPClient is a wrapper which extends the default health status and allows
+// the calling function to specify a client using the default by passing nil or custom client
+func GetCustomHTTPClient(url string, client *http.Client) (bool, error) {
+	return getHealthStatus(url, client)
+}
+
+func getHealthStatus(url string, client *http.Client) (bool, error) {
 	var (
 		response ServiceCheck
 	)
+
+	// No client is passed use a default http client
+	if client == nil {
+		client = defaultHTTPClient
+	}
 
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false, err
 	}
 
-	resp, err := HTTPClient.Do(r)
+	resp, err := client.Do(r)
 	if err != nil {
 		return false, err
 	}
@@ -232,6 +221,48 @@ func Get(url string) (bool, error) {
 	}
 
 	return response.Healthy, nil
+}
+
+// Check200Helper is a wrapper function for checking a service's health endpoint.
+// It uses the defaultHTTPClient for making the requests
+func Check200Helper(rawURL string) (bool, error) {
+	return checkHTTPStatusCode(rawURL, defaultHTTPClient)
+}
+
+// Check200HelperCustomHTTPClient is a is a wrapper function for checking a service's health endpoint.
+// An optional http client can be passed in this request to use different timeouts
+func Check200HelperCustomHTTPClient(rawURL string, client *http.Client) (bool, error) {
+	return checkHTTPStatusCode(rawURL, client)
+}
+
+// checkHTTPStatusCode is a helper function for checking a service's health endpoint.
+// An optional http client can be passed in this request to use different timeouts.
+func checkHTTPStatusCode(rawURL string, client *http.Client) (bool, error) {
+	u, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return false, err
+	}
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return false, err
+	}
+
+	// If no client is passed use a default http client
+	if client == nil {
+		client = defaultHTTPClient
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 // Errors
