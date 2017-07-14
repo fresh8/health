@@ -54,9 +54,6 @@ type Dependency struct {
 //
 // Since v2.0.0 the user is required to start the check themselves by calling
 // StartCheck once all dependencies are registered
-//
-// Since v3.0.0 the user is required to specify the time duration of the health checks
-// This is to allow control of how frequently the health checks are made
 func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck, error) {
 	if name == "" {
 		return nil, ErrNoServiceNameSupplied
