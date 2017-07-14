@@ -45,7 +45,8 @@ type Dependency struct {
 	Name    string `json:"name"`
 	Healthy bool   `json:"healthy"`
 	Level   Level  `json:"level"`
-	check   func() bool
+
+	check func() bool
 }
 
 // InitialiseServiceCheck returns an initialised check for the service `name`.
