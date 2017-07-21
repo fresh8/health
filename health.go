@@ -72,6 +72,9 @@ func Check200Helper(rawURL string, optionalClient ...*http.Client) (bool, error)
 		return false, err
 	}
 
+	// ensure resp.Body is closed when function returns
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return false, nil
 	}
@@ -226,11 +229,13 @@ func Get(url string, optionalClient ...*http.Client) (bool, error) {
 		return false, err
 	}
 
+	// ensure resp.Body is closed when function returns
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return false, nil
 	}
 
-	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return false, err
 	}

@@ -2,6 +2,7 @@ package health
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -300,5 +301,98 @@ func TestGetHealth(t *testing.T) {
 	healthy := healthCheck.Healthy
 	if !healthy {
 		t.Error("expected to be healthy")
+	}
+}
+
+/*
+ *	Benchmarks
+ */
+
+func BenchmarkGet(b *testing.B) {
+	success := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(&ServiceCheck{
+			Name:    "test",
+			Healthy: true,
+		})
+	}))
+
+	failure := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(&ServiceCheck{
+			Name:    "test",
+			Healthy: false,
+		})
+	}))
+
+	unavalible := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(503)
+		json.NewEncoder(w).Encode(&ServiceCheck{
+			Name:    "test",
+			Healthy: false,
+		})
+	}))
+
+	optionalClient := &http.Client{
+		Timeout:   500 * time.Millisecond,
+		Transport: http.DefaultTransport,
+	}
+
+	for i := 0; i < b.N; i++ {
+		health, _ := Get(success.URL, optionalClient)
+		if !health {
+			b.Log(fmt.Sprintf("Expecting %t got %t", true, health))
+		}
+	}
+	for i := 0; i < b.N; i++ {
+		health, _ := Get(failure.URL, optionalClient)
+		if health {
+			b.Log(fmt.Sprintf("Expecting %t got %t", false, health))
+		}
+	}
+	for i := 0; i < b.N; i++ {
+		health, _ := Get(unavalible.URL, optionalClient)
+		if health {
+			b.Log(fmt.Sprintf("Expecting %t got %t", false, health))
+		}
+	}
+
+}
+
+func BenchmarkCheck200Helper(b *testing.B) {
+	success := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		json.NewEncoder(w).Encode(&ServiceCheck{
+			Name:    "test",
+			Healthy: true,
+		})
+	}))
+
+	failure := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(503)
+		json.NewEncoder(w).Encode(&ServiceCheck{
+			Name:    "test",
+			Healthy: false,
+		})
+	}))
+
+	optionalClient := &http.Client{
+		Timeout:   500 * time.Millisecond,
+		Transport: http.DefaultTransport,
+	}
+
+	for i := 0; i < b.N; i++ {
+		health, _ := Check200Helper(success.URL, optionalClient)
+		if !health {
+			b.Log(fmt.Sprintf("Expecting %t got %t", true, health))
+		}
+	}
+
+	for i := 0; i < b.N; i++ {
+		health, _ := Check200Helper(failure.URL, optionalClient)
+		if health {
+			b.Log(fmt.Sprintf("Expecting %t got %t", false, health))
+			continue
+		}
 	}
 }
