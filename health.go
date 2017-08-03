@@ -104,6 +104,9 @@ func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck,
 // if it takes longer than `timeout` to ensure that all dependencies are
 // healthy it will return false
 func (s *ServiceCheck) WaitForDependencies(timeout time.Duration) bool {
+	if s.Dependencies == nil || len(s.Dependencies) == 0 {
+		return true
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	go func() {
 		for {
