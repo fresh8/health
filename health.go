@@ -94,6 +94,7 @@ func InitialiseServiceCheck(name string, duration time.Duration) (*ServiceCheck,
 
 	check := &ServiceCheck{
 		Name:     name,
+		Healthy:  true,
 		duration: duration,
 	}
 
